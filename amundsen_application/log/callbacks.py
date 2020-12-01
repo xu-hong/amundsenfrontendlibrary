@@ -1,9 +1,11 @@
 from contextlib import contextmanager
+import json
 from typing import NamedTuple
 
 import psycopg2
 from psycopg2 import sql
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
+from psycopg2.extras import Json
 
 from action_log_model import ActionLogParams
 
@@ -67,17 +69,56 @@ def create_db():
 
 def create_table():
     with get_postgres().cursor() as cur:
-        cur.execute(sql.SQL("SELECT version()"))
+        cur.execute(sql.SQL("""
+        CREATE TABLE action_log (
+            command text,
+            start_epoch_ms bigint,
+            end_epoch_ms bigint,
+            "user" varchar(1024),
+            host_name varchar(512),
+            pos_args_json json,
+            keyword_args_json json
+        )
+        """))
+
+
+def insert_record(record: ActionLogParams):
+    with get_postgres().cursor() as cur:
+        cur.execute("""
+        INSERT INTO action_log (
+        command,
+        start_epoch_ms,
+        end_epoch_ms,
+        "user",
+        host_name,
+        pos_args_json,
+        keyword_args_json
+        ) VALUES(%s, %s, %s, %s, %s, %s, %s)""",
+                    (
+                        record.command,
+                        record.start_epoch_ms,
+                        record.end_epoch_ms,
+                        record.user,
+                        record.host_name,
+                        Json(record.pos_args_json),
+                        Json(record.keyword_args_json)
+                    ))
+
+        cur.execute(sql.SQL("select * from action_log;"))
         for r in cur.fetchall():
             print(r)
 
 
-# def insert(record: ActionLogParams):
-#     sql = """
-#
-#     """
-
-
 if __name__ == '__main__':
     init_connection()
-    create_table()
+    metrics = {
+        "command": "test",
+        "start_epoch_ms": 1,
+        "end_epoch_ms": None,
+        "user": "hong",
+        "host_name": "local",
+        "pos_args_json": {"a": 100},
+        "keyword_args_json": {"key": "value"}
+    }
+    a = ActionLogParams(**metrics)
+    insert_record(a)
