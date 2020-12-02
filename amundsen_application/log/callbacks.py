@@ -1,20 +1,24 @@
 from contextlib import contextmanager
-import json
-from typing import NamedTuple
+import os
+import urllib.parse
 
 import psycopg2
 from psycopg2 import sql
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from psycopg2.extras import Json
 
-from action_log_model import ActionLogParams
+from amundsen_application.log.action_log_model import ActionLogParams
+
+DATABASE_URL = os.getenv("DATABASE_URL", "postgres://hong:w14@localhost:5432/postgres")
+db = urllib.parse.urlparse(DATABASE_URL)
 
 
 class PostgresConfig(object):
-    dbname = "postgres"
-    user = "hong"
-    host = "localhost"
-    password = "w14"
+    dbname = db.path[1:]
+    user = db.username
+    host = db.hostname
+    password = db.password
+    port = db.port
 
 
 class DB(object):
@@ -47,24 +51,12 @@ class DB(object):
             finally:
                 cursor.close()
 
-_postgres = None
 
-
-def init_connection():
-    global _postgres
-    _postgres = DB()
-    return _postgres
+_postgres = DB()
 
 
 def get_postgres():
     return _postgres
-
-
-def create_db():
-    with get_postgres().cursor() as cur:
-        cur.execute(sql.SQL("CREATE DATABASE {}").format(
-            sql.Identifier("amundsen"))
-        )
 
 
 def create_table():
@@ -110,7 +102,6 @@ def insert_record(record: ActionLogParams):
 
 
 if __name__ == '__main__':
-    init_connection()
     metrics = {
         "command": "test",
         "start_epoch_ms": 1,

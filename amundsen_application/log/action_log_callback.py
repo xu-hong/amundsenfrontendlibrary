@@ -13,6 +13,7 @@ from typing import Callable, List  # noqa: F401
 from pkg_resources import iter_entry_points
 
 from amundsen_application.log.action_log_model import ActionLogParams
+from amundsen_application.log.callbacks import insert_record
 
 LOGGER = logging.getLogger(__name__)
 
@@ -83,6 +84,7 @@ def logging_action_log(action_log_params: ActionLogParams) -> None:
     """
     if LOGGER.isEnabledFor(logging.DEBUG):
         LOGGER.debug('logging_action_log: {}'.format(action_log_params))
+    insert_record(action_log_params)
 
 
 def register_action_logs() -> None:
